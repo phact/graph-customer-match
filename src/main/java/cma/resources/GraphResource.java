@@ -5,10 +5,7 @@ import cma.managed.Dse;
 import com.codahale.metrics.annotation.Timed;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
 import com.datastax.driver.dse.DseSession;
-import com.datastax.driver.dse.graph.GraphNode;
-import com.datastax.driver.dse.graph.GraphResultSet;
-import com.datastax.driver.dse.graph.GraphStatement;
-import com.datastax.driver.dse.graph.Vertex;
+import com.datastax.driver.dse.graph.*;
 import com.datastax.dse.graph.api.DseGraph;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -108,8 +105,10 @@ public class GraphResource {
                         has("lastname",eq(sourceCustomerVertex.getProperty("lastname").getValue().asString())).
                         has("dob",eq(sourceCustomerVertex.getProperty("dob").getValue().asInt())).
                         has("address",eq(sourceCustomerVertex.getProperty("address").getValue().asString())).
-                        has("ssn",eq(sourceCustomerVertex.getProperty("ssn").getValue().asString())).as("to")
-                .V("id",sourceCustomerVertex.getId().toString()).as("from")
+                        has("ssn",eq(sourceCustomerVertex.getProperty("ssn").getValue().asString()))
+                            .as("to")
+                .V("id",sourceCustomerVertex.getId().toString())
+                            .as("from")
                 .addE("is")
                 .from("from")
                 .to("to")
@@ -286,4 +285,71 @@ public class GraphResource {
                 MoreExecutors.sameThreadExecutor()
         );
     }
+
+
+    //get scored matches, this passes a groovy string to be executed in the graph engine
+    //this allows for server side score computation (for performance) and simplifies the application code.
+    @PUT
+    @Timed
+    @Path("/getScoredMatches")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public String getScoredMatches(final SourceCustomer sourceCustomer) {
+
+            String statementString = "def scores = [:]\n" +
+                "    def test;\n" +
+                "    g.V().hasLabel(\"global_customer_record\").has(\"firstname\", \"" + sourceCustomer.getFirstname() + "\").forEachRemaining{\n" +
+                "        matchCandidate ->\n" +
+                "                test = matchCandidate\n" +
+                "        if (scores[matchCandidate] == null){\n" +
+                "            scores[matchCandidate] = 0 ;\n" +
+                "        }\n" +
+                "        if (matchCandidate.value(\"lastname\") == \"" + sourceCustomer.getLastname() + "\"){\n" +
+                "            scores[matchCandidate] = scores[matchCandidate] + 1;\n" +
+                "        }\n" +
+                "        if (matchCandidate.value(\"firstname\") == \""+ sourceCustomer.getFirstname() +"\"){\n" +
+                "            scores[matchCandidate] = scores[matchCandidate] + 2;\n" +
+                "        }\n" +
+                "        if (matchCandidate.value(\"address\") == \""+ sourceCustomer.getAddress() +"\"){\n" +
+                "            scores[matchCandidate] = scores[matchCandidate] + 3;\n" +
+                "        }\n" +
+                "        if (matchCandidate.value(\"ssn\") == \""+ sourceCustomer.getSsn() +"\"){\n" +
+                "            scores[matchCandidate] = scores[matchCandidate] + 4;\n" +
+                "        }else{\n" +
+                "            scores[matchCandidate] = scores[matchCandidate] + 0;\n" +
+                "        }\n" +
+                "    }\n" +
+                "    scores;";
+
+        GraphStatement graphStatement = new SimpleGraphStatement(statementString);
+
+        GraphResultSet rs = session.executeGraph(graphStatement);
+
+        String result  = rs.one().toString();
+
+        if (result==null){
+            return null;
+        }
+        return "no matches";
+
+    }
+
+    @PUT
+    @Timed
+    @Path("/test")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public String test(final SourceCustomer sourceCustomer) {
+
+        String statementString = "def scores = ['1':'2']\n" +
+                "    scores;";
+
+        GraphStatement graphStatement = new SimpleGraphStatement(statementString);
+
+        GraphResultSet rs = session.executeGraph(graphStatement);
+
+        return rs.one().toString();
+
+    }
+
 }

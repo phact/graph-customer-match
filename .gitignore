@@ -1,3 +1,4 @@
 .idea/
 target/
 cma-poc.iml
+.DS_Store
