@@ -106,9 +106,9 @@ public class GraphResource {
                         has("dob",eq(sourceCustomerVertex.getProperty("dob").getValue().asInt())).
                         has("address",eq(sourceCustomerVertex.getProperty("address").getValue().asString())).
                         has("ssn",eq(sourceCustomerVertex.getProperty("ssn").getValue().asString()))
-                            .as("to")
+                .as("to")
                 .V("id",sourceCustomerVertex.getId().toString())
-                            .as("from")
+                .as("from")
                 .addE("is")
                 .from("from")
                 .to("to")
@@ -296,32 +296,36 @@ public class GraphResource {
     @Produces(MediaType.APPLICATION_JSON)
     public String getScoredMatches(final SourceCustomer sourceCustomer) {
 
-            String statementString = "def scores = [:]\n" +
-                "    def test;\n" +
-                "    g.V().hasLabel(\"global_customer_record\").has(\"firstname\", \"" + sourceCustomer.getFirstname() + "\").forEachRemaining{\n" +
-                "        matchCandidate ->\n" +
-                "                test = matchCandidate\n" +
-                "        if (scores[matchCandidate] == null){\n" +
-                "            scores[matchCandidate] = 0 ;\n" +
-                "        }\n" +
-                "        if (matchCandidate.value(\"lastname\") == \"" + sourceCustomer.getLastname() + "\"){\n" +
-                "            scores[matchCandidate] = scores[matchCandidate] + 1;\n" +
-                "        }\n" +
-                "        if (matchCandidate.value(\"firstname\") == \""+ sourceCustomer.getFirstname() +"\"){\n" +
-                "            scores[matchCandidate] = scores[matchCandidate] + 2;\n" +
-                "        }\n" +
-                "        if (matchCandidate.value(\"address\") == \""+ sourceCustomer.getAddress() +"\"){\n" +
-                "            scores[matchCandidate] = scores[matchCandidate] + 3;\n" +
-                "        }\n" +
-                "        if (matchCandidate.value(\"ssn\") == \""+ sourceCustomer.getSsn() +"\"){\n" +
-                "            scores[matchCandidate] = scores[matchCandidate] + 4;\n" +
-                "        }else{\n" +
-                "            scores[matchCandidate] = scores[matchCandidate] + 0;\n" +
-                "        }\n" +
-                "    }\n" +
-                "    scores;";
+        StringBuilder statementSB = new StringBuilder("def scores = [:]\n")
+                .append("    def test;\n")
+                .append("    g.V().hasLabel('global_customer_record').has('firstname', firstname).forEachRemaining{\n")
+                .append("        matchCandidate ->\n")
+                .append("                test = matchCandidate\n")
+                .append("        if (scores[matchCandidate] == null){\n")
+                .append("            scores[matchCandidate] = 0 ;\n")
+                .append("        }\n")
+                .append("        if (matchCandidate.value('lastname') == lastname){\n")
+                .append("            scores[matchCandidate] = scores[matchCandidate] + 1;\n")
+                .append("        }\n")
+                .append("        if (matchCandidate.value('firstname') == firstname){\n")
+                .append("            scores[matchCandidate] = scores[matchCandidate] + 2;\n")
+                .append("        }\n")
+                .append("        if (matchCandidate.value('address') == address){\n")
+                .append("            scores[matchCandidate] = scores[matchCandidate] + 3;\n")
+                .append("        }\n")
+                .append("        if (matchCandidate.value('ssn') == ssn){\n")
+                .append("            scores[matchCandidate] = scores[matchCandidate] + 4;\n")
+                .append("        }else{\n")
+                .append("            scores[matchCandidate] = scores[matchCandidate] + 0;\n")
+                .append("        }\n")
+                .append("    }\n")
+                .append("    scores;");
 
-        GraphStatement graphStatement = new SimpleGraphStatement(statementString);
+        GraphStatement graphStatement = new SimpleGraphStatement(statementSB.toString())
+                .set("firstname", sourceCustomer.getFirstname())
+                .set("lastname", sourceCustomer.getLastname())
+                .set("address", sourceCustomer.getAddress())
+                .set("ssn", sourceCustomer.getSsn());
 
         GraphResultSet rs = session.executeGraph(graphStatement);
 
