@@ -1,4 +1,4 @@
-###Create graph schema:
+### Create graph schema:
 
 In DSE Studio execute the following schema creation (this will prevent duplicate records in the graph since we use custom ID's for `source_customer_record`s (the default graph is cma_dev):
 
@@ -29,15 +29,15 @@ schema.vertexLabel("global_customer_record").index("by_gender").secondary().by("
 ```
 
 
-###Download and Run:
+### Download and Run:
 
     java -jar cma-1.0-SNAPSHOT.jar server conf/cma.yaml
 
-###Run from Source:
+### Run from Source:
 
     mvn package exec:java "-Dexec.args=server conf/cma.yaml"
 
-###Build and run:
+### Build and run:
 
     mvn package
 
