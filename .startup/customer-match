@@ -1,0 +1,2 @@
+mvn package exec:java "-Dexec.args=server conf/cma.yaml"
+
