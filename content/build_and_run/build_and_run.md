@@ -4,7 +4,7 @@ title = "Build and Run"
 weight =  4
 +++
 
-##Startup Script
+## Startup Script
 
 This Asset leverages
 [simple-startup](https://github.com/jshook/simple-startup). To start the entire

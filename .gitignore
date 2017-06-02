@@ -2,3 +2,6 @@
 target/
 cma-poc.iml
 .DS_Store
+public/
+themes/
+*.log
