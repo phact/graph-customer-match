@@ -1,7 +1,6 @@
 logging:
-
   level: INFO
-
   loggers:
-
     io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper: DEBUG
+swagger:
+  resourcePackage: graphcustomermatch

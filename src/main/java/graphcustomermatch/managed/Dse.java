@@ -1,10 +1,10 @@
-package cma.managed;
+package graphcustomermatch.managed;
 
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.driver.dse.graph.GraphOptions;
 import io.dropwizard.lifecycle.Managed;
-import cma.CMAConfiguration;
+import graphcustomermatch.CMAConfiguration;
 
 /**
  * Created by sebastianestevez on 11/22/16.

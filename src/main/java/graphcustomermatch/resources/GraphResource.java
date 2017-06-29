@@ -1,28 +1,32 @@
-package cma.resources;
+package graphcustomermatch.resources;
 
-import cma.api.SourceCustomer;
-import cma.managed.Dse;
 import com.codahale.metrics.annotation.Timed;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
 import com.datastax.driver.dse.DseSession;
-import com.datastax.driver.dse.graph.*;
+import com.datastax.driver.dse.graph.Edge;
+import com.datastax.driver.dse.graph.GraphNode;
+import com.datastax.driver.dse.graph.GraphResultSet;
+import com.datastax.driver.dse.graph.GraphStatement;
+import com.datastax.driver.dse.graph.SimpleGraphStatement;
+import com.datastax.driver.dse.graph.Vertex;
 import com.datastax.dse.graph.api.DseGraph;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
-import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
-import org.apache.tinkerpop.gremlin.structure.Edge;
-import org.apache.tinkerpop.gremlin.structure.T;
-
+import graphcustomermatch.api.SourceCustomer;
+import graphcustomermatch.managed.Dse;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
-import java.util.concurrent.atomic.AtomicReference;
-
 import static org.apache.tinkerpop.gremlin.process.traversal.P.eq;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
+import org.apache.tinkerpop.gremlin.structure.T;
 
 /**
  * Created by sebastianestevez on 11/22/16.
@@ -294,7 +298,7 @@ public class GraphResource {
     @Path("/getScoredMatches")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public String getScoredMatches(final SourceCustomer sourceCustomer) {
+    public Map getScoredMatches(final SourceCustomer sourceCustomer) {
 
         StringBuilder statementSB = new StringBuilder("def scores = [:]\n")
                 .append("    def test;\n")
@@ -307,14 +311,11 @@ public class GraphResource {
                 .append("        if (matchCandidate.value('lastname') == lastname){\n")
                 .append("            scores[matchCandidate] = scores[matchCandidate] + 1;\n")
                 .append("        }\n")
-                .append("        if (matchCandidate.value('firstname') == firstname){\n")
+                .append("        if (matchCandidate.value('address') == address){\n")
                 .append("            scores[matchCandidate] = scores[matchCandidate] + 2;\n")
                 .append("        }\n")
-                .append("        if (matchCandidate.value('address') == address){\n")
-                .append("            scores[matchCandidate] = scores[matchCandidate] + 3;\n")
-                .append("        }\n")
                 .append("        if (matchCandidate.value('ssn') == ssn){\n")
-                .append("            scores[matchCandidate] = scores[matchCandidate] + 4;\n")
+                .append("            scores[matchCandidate] = scores[matchCandidate] + 3;\n")
                 .append("        }else{\n")
                 .append("            scores[matchCandidate] = scores[matchCandidate] + 0;\n")
                 .append("        }\n")
@@ -329,12 +330,12 @@ public class GraphResource {
 
         GraphResultSet rs = session.executeGraph(graphStatement);
 
-        String result  = rs.one().toString();
+        Map result  = rs.one().asMap();
 
         if (result==null){
             return null;
         }
-        return "no matches";
+        return result;
 
     }
 
@@ -356,4 +357,52 @@ public class GraphResource {
 
     }
 
+    //async is singificantly more performant though it may produce more global duplicates due to race conditions.
+    //good option if there is a cleanup job in place and if global vertices are mostly populated
+    @PUT
+    @Timed
+    @Path("/addCustomerCoalesce")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public SourceCustomer addCustomerCoalesce(final SourceCustomer sourceCustomer) {
+        //Upsert
+        GraphStatement graphStatement = DseGraph.statementFromTraversal(g.addV("source_customer_record").
+                property("source_id", sourceCustomer.getSourceid()).
+                property("dob", sourceCustomer.getDob()).
+                property("system_name", sourceCustomer.getSystem_name()).
+                property("firstname",sourceCustomer.getFirstname()).
+                property("lastname",sourceCustomer.getLastname()).
+                property("ssn",sourceCustomer.getSsn()).
+                property("phone", sourceCustomer.getPhone()).
+                property("gender", sourceCustomer.getGender()).
+                property("address",sourceCustomer.getAddress()).to("source")
+                .coalesce(
+                        __.V().hasLabel("global_customer_record")
+                                .has("firstname",eq(sourceCustomer.getFirstname())).
+                                has("lastname",eq(sourceCustomer.getLastname())).
+                                has("dob",eq(sourceCustomer.getDob())).
+                                has("address",eq(sourceCustomer.getAddress())).
+                                has("ssn",eq(sourceCustomer.getSsn())),
+                        __.addV("global_customer_record").
+                                property("dob", sourceCustomer.getDob()).
+                                property("system_name", sourceCustomer.getSystem_name()).
+                                property("firstname", sourceCustomer.getFirstname()).
+                                property("lastname", sourceCustomer.getLastname()).
+                                property("ssn", sourceCustomer.getSsn()).
+                                property("phone", sourceCustomer.getPhone()).
+                                property("address", sourceCustomer.getAddress()).
+                                property("gender", sourceCustomer.getGender())
+                ).as("to").
+                        addE("is").from("source").to("to").
+                        property("confidence", "A")
+        );
+
+        Edge customerEdge = session.executeGraph(graphStatement).one().asEdge();
+
+        session.executeGraph(graphStatement);
+        return sourceCustomer;
+
+    }
+
 }
+

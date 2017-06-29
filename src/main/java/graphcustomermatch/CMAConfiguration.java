@@ -1,11 +1,11 @@
-package cma;
+package graphcustomermatch;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.Configuration;
-import org.hibernate.validator.constraints.NotEmpty;
-
+import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import org.hibernate.validator.constraints.NotEmpty;
 
 
 /**
@@ -16,6 +16,9 @@ public class CMAConfiguration extends Configuration{
     @NotEmpty
     @JsonProperty
     private String host = "localhost";
+
+    @JsonProperty("swagger")
+    public SwaggerBundleConfiguration swaggerBundleConfiguration;
 
     @Min(1)
     @Max(65535)

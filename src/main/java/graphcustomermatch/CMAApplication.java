@@ -1,10 +1,12 @@
-package cma;
+package graphcustomermatch;
 
-import cma.managed.Dse;
-import cma.resources.GraphResource;
+import graphcustomermatch.managed.Dse;
+import graphcustomermatch.resources.GraphResource;
 import io.dropwizard.Application;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import io.federecio.dropwizard.swagger.SwaggerBundle;
+import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 
 /**
  * Created by sebastianestevez on 11/22/16.
@@ -17,7 +19,15 @@ public class CMAApplication extends Application<CMAConfiguration> {
     @Override
     public void initialize(Bootstrap<CMAConfiguration> bootstrap) {
 
-    }
+        SwaggerBundle<CMAConfiguration> swaggerBundle;
+        swaggerBundle = new SwaggerBundle<CMAConfiguration>() {
+            @Override
+            protected SwaggerBundleConfiguration getSwaggerBundleConfiguration(CMAConfiguration configuration) {
+                return configuration.swaggerBundleConfiguration;
+            }
+        };
+        bootstrap.addBundle(swaggerBundle);
+   }
     @Override
     public void run(CMAConfiguration cmaConfiguration, Environment environment) throws Exception {
 

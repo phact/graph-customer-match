@@ -1,4 +1,4 @@
-package cma.api;
+package graphcustomermatch.api;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
