@@ -68,12 +68,10 @@ import org.apache.tinkerpop.gremlin.structure.T;
     2) If there's no global match, create a global vertex with the new info and create a type A edge. On success, drop any B's
     3) If there's a match create the edge with the match confidence depending on the type of match
 
-    The DataStewardship UI will provide manual intervention for matches of type B
+    Then manually
     1) Pull properties for Global and Source for every type B
     2) User will select if a match is valid and be able to correct missing / incorrect inputs
     3) User's final record will be inserted thorugh standard workflow above and be upgraded to type A
-
-    http://54.183.185.50:9091/
 
       */
 
