@@ -27,7 +27,7 @@ public class CMAConfiguration extends Configuration{
 
     @NotEmpty
     @JsonProperty
-    private String graphName = "cma";
+    private String graphName = "customer_match";
 
     public String getHost() {
         return host;
