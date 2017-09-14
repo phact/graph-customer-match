@@ -1,0 +1,64 @@
+# ./ebdse run type=dsegraph yaml=customer-match tags=name:create-graph threads=1 cycles=1 -vvv
+tags:
+ name: create-graph
+statements:
+ - system.graph('customer_match').ifNotExists().create();
+---
+# ./ebdse run type=dsegraph yaml=customer-match graphname=customer_match tags=name:create-schema threads=1 cycles=1 -vvv
+tags:
+  name: create-schema
+statements:
+  -     >-
+    schema.propertyKey("firstname").Text().single().create();
+    schema.propertyKey("address").Text().single().create();
+    schema.propertyKey("CODS").Text().single().create();
+    schema.propertyKey("gender").Text().single().create();
+    schema.propertyKey("phone").Text().single().create();
+    schema.propertyKey("confidence").Text().single().create();
+    schema.propertyKey("system_name").Text().single().create();
+    schema.propertyKey("source_id").Text().single().create();
+    schema.propertyKey("global_id").Text().single().create();
+    schema.propertyKey("lastname").Text().single().create();
+    schema.propertyKey("ssn").Text().single().create();
+    schema.propertyKey("dob").Bigint().single().create();
+    schema.edgeLabel("is").single().properties("confidence").create();
+    schema.vertexLabel("source_customer_record").partitionKey("source_id").properties("system_name", "firstname", "address", "gender", "phone", "lastname", "ssn","dob").create();
+    schema.vertexLabel("global_customer_record").partitionKey("global_id").properties("firstname", "address", "gender", "phone", "lastname", "ssn","dob").create();
+    schema.edgeLabel("is").connection("source_customer_record", "global_customer_record").add();
+    //add some indexes, search for high cardinality and partial match
+    schema.vertexLabel("source_customer_record").index("search").search().by("firstname").asString().by("lastname").asString().by("address").asString().by("ssn").asString().by("dob").add();
+    schema.vertexLabel("global_customer_record").index("search").search().by("firstname").asString().by("lastname").asString().by("address").asString().by("ssn").asString().by("dob").add();
+    //secondary index for low cardinality
+    schema.vertexLabel("source_customer_record").index("by_gender").secondary().by("gender").add();
+    schema.vertexLabel("global_customer_record").index("by_gender").secondary().by("gender").add();
+---
+# ./ebdse run type=dsegraph yaml=customer-match graphname=customer_match tags=name:dev-mode -vvv
+tags:
+ name: dev-mode
+statements:
+ - schema.config().option('graph.schema_mode').set('Development')
+---
+# ./ebdse run type=dsegraph yaml=customer-match graphname=customer_match tags=name:prod-mode -vvv
+tags:
+ name: prod-mode
+statements:
+ - schema.config().option('graph.schema_mode').set('Production')
+---
+# ./ebdse run type=dsegraph yaml=customer-match graphname=customer_match tags=name:add-wheels -vvv
+tags:
+ name: add-wheels
+statements:
+  - >-
+    gcustomer = graph.addVertex(label,'global_customer_record', 'global_id', ?globalid, 'dob', ?dob, 'firstname',?firstname,'lastname',?lastname,'ssn',?ssn,'phone', ?phone,'gender', ?gender);
+    customer = graph.addVertex(label,'source_customer_record', 'source_id', ?sourceid, 'dob', ?dob, 'system_name', ?systemname, 'firstname',?firstname,'lastname', ?lastname,'ssn',?ssn,'phone', ?phone,'gender', ?gender);
+    customer.addEdge('is', gcustomer);
+bindings:
+ sourceid: ToEpochTimeUUID() -> String
+ globalid: compose Add(200000); Div(<<accounts_per_customer:10>>); ToEpochTimeUUID(); ToString() -> String
+ dob: Add(1505256898)
+ firstname: HashedLineToString('data/names.txt')
+ lastname: compose Add(0); HashedLineToString('data/lastnames.txt') -> String
+ ssn: Combinations('1-9;1-;1-9;-;0-9;0-9;-;0-9;0-9;0-9;0-9')
+ phone: Combinations('1-9;1-7;0-9;-;0-9;0-9;0-9;-;0-9;0-9;0-9;0-9')
+ gender: WeightedStrings('male:1;female:1;')
+ systemname: WeightedStrings('retail:1;investment:1;digital:1')
